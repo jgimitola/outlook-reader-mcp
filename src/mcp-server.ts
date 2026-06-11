@@ -19,6 +19,14 @@ async function main() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // When the client disconnects, stdin ends — but background MSAL device-code
+  // polling can keep the event loop alive for up to 15 minutes, leaving an
+  // orphaned process. Give in-flight responses a moment to flush, then exit.
+  // unref() lets the process exit sooner naturally if the loop drains.
+  process.stdin.on('end', () => {
+    setTimeout(() => process.exit(0), 5_000).unref();
+  });
 }
 
 main().catch((err) => {

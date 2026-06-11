@@ -1,3 +1,5 @@
+import { AuthRequiredError } from '../auth.js';
+
 type ToolResult = {
   content: { type: 'text'; text: string }[];
   isError?: boolean;
@@ -23,7 +25,12 @@ export function wrapHandler<I>(
 }
 
 function friendlyError(err: unknown): string {
+  if (err instanceof AuthRequiredError) return err.message;
   const e = err as { statusCode?: number; message?: string };
+  // statusCode -1 = client-side failure: the Graph middleware wraps errors
+  // thrown by the auth provider (e.g. AuthRequiredError), losing the class
+  // but keeping the message — pass it through untouched.
+  if (e?.statusCode === -1 && e?.message) return e.message;
   switch (e?.statusCode) {
     case 400:
       return `Bad request — likely invalid OData filter/orderby syntax. Details: ${e.message ?? ''}`;

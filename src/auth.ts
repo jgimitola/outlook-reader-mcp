@@ -118,18 +118,110 @@ function pickAccount(accounts: AccountInfo[]): AccountInfo {
   return account;
 }
 
-async function acquireByDeviceCode(app: PublicClientApplication) {
-  const request: DeviceCodeRequest = {
-    scopes: SCOPES,
-    deviceCodeCallback: (response) => {
-      // stdout is the MCP transport — writing there corrupts JSON-RPC framing.
-      console.error(response.message);
-    },
+/**
+ * Thrown when a request needs the user to sign in. Tool handlers surface the
+ * message as tool output so the model can tell the user exactly what to do —
+ * auth must never silently block inside a tool call.
+ */
+export class AuthRequiredError extends Error {}
+
+let pendingAuth: {
+  verification: string;
+  expiresAt: number;
+} | null = null;
+
+// Held so sign_out can abort an in-flight device code flow: MSAL checks
+// request.cancel between polls.
+let pendingRequest: DeviceCodeRequest | null = null;
+
+function rememberToken(result: {
+  accessToken: string;
+  expiresOn?: Date | null;
+}) {
+  cachedToken = {
+    token: result.accessToken,
+    expiresOn: result.expiresOn?.getTime() ?? Date.now() + 5 * 60_000,
   };
-  const result = await app.acquireTokenByDeviceCode(request);
-  if (!result)
-    throw new Error('Device code authentication returned no result.');
-  return result;
+}
+
+/**
+ * Kicks off the device code flow and resolves as soon as the verification
+ * URL + code are available, while MSAL keeps polling in the background.
+ * Calling again while a code is still valid returns the same code.
+ */
+export async function startDeviceCodeAuth(): Promise<string> {
+  if (pendingAuth && Date.now() < pendingAuth.expiresAt) {
+    return pendingAuth.verification;
+  }
+
+  const app = await buildMsalApp();
+  return new Promise<string>((resolve, reject) => {
+    const request: DeviceCodeRequest = {
+      scopes: SCOPES,
+      deviceCodeCallback: (response) => {
+        pendingAuth = {
+          verification: response.message,
+          expiresAt: Date.now() + response.expiresIn * 1000,
+        };
+        // Also mirror to the server log.
+        console.error(response.message);
+        resolve(response.message);
+      },
+    };
+    pendingRequest = request;
+
+    app
+      .acquireTokenByDeviceCode(request)
+      .then((result) => {
+        if (result) {
+          rememberToken(result);
+          console.error(
+            `Signed in as ${result.account?.username ?? 'unknown account'}.`,
+          );
+        }
+      })
+      .catch((err) => {
+        // Reaches the tool only if the flow failed before the code was
+        // issued; after resolve() this is a no-op and the error is logged.
+        reject(err);
+        console.error(
+          `Device code sign-in did not complete: ${err instanceof Error ? err.message : err}`,
+        );
+      })
+      .finally(() => {
+        pendingAuth = null;
+        pendingRequest = null;
+      });
+  });
+}
+
+/**
+ * Signs out: cancels any in-flight device code flow, drops the in-memory
+ * token, and removes all accounts from the persistent cache. Returns the
+ * usernames that were removed.
+ */
+export async function clearAuth(): Promise<string[]> {
+  cachedToken = null;
+  if (pendingRequest) {
+    pendingRequest.cancel = true;
+    pendingRequest = null;
+  }
+  pendingAuth = null;
+
+  const app = await buildMsalApp();
+  const cache = app.getTokenCache();
+  const accounts = await cache.getAllAccounts();
+  for (const account of accounts) {
+    await cache.removeAccount(account);
+  }
+  return accounts.map((a) => a.username);
+}
+
+/** Username of the signed-in account, or null when not authenticated. */
+export async function getSignedInAccount(): Promise<string | null> {
+  const app = await buildMsalApp();
+  const accounts = await app.getTokenCache().getAllAccounts();
+  return accounts.length > 0 ? pickAccount(accounts).username : null;
 }
 
 export async function getAccessToken(): Promise<string> {
@@ -142,29 +234,34 @@ export async function getAccessToken(): Promise<string> {
   const app = await buildMsalApp();
   const accounts = await app.getTokenCache().getAllAccounts();
 
-  let result;
-  if (accounts.length > 0) {
-    const account = pickAccount(accounts);
-    try {
-      result = await app.acquireTokenSilent({ account, scopes: SCOPES });
-    } catch (err) {
-      if (!(err instanceof InteractionRequiredAuthError)) throw err;
-      // Refresh token expired or revoked: drop the stale account so we don't
-      // get stuck in a silent-failure loop, then re-run device code.
-      console.error(
-        `Cached credentials for ${account.username} expired or were revoked; re-authenticating.`,
+  if (accounts.length === 0) {
+    if (pendingAuth && Date.now() < pendingAuth.expiresAt) {
+      throw new AuthRequiredError(
+        `Sign-in is still pending. ${pendingAuth.verification} Retry this request after signing in.`,
       );
-      await app.getTokenCache().removeAccount(account);
-      result = await acquireByDeviceCode(app);
     }
-  } else {
-    result = await acquireByDeviceCode(app);
+    throw new AuthRequiredError(
+      'Not signed in to a Microsoft account. Run the authenticate tool first, ' +
+        'then retry this request.',
+    );
+  }
+
+  const account = pickAccount(accounts);
+  let result;
+  try {
+    result = await app.acquireTokenSilent({ account, scopes: SCOPES });
+  } catch (err) {
+    if (!(err instanceof InteractionRequiredAuthError)) throw err;
+    // Refresh token expired or revoked: drop the stale account so the next
+    // authenticate run starts clean instead of looping on silent failures.
+    await app.getTokenCache().removeAccount(account);
+    throw new AuthRequiredError(
+      `The cached session for ${account.username} has expired or was revoked. ` +
+        'Run the authenticate tool to sign in again, then retry this request.',
+    );
   }
 
   if (!result) throw new Error('Token acquisition returned no result.');
-  cachedToken = {
-    token: result.accessToken,
-    expiresOn: result.expiresOn?.getTime() ?? Date.now() + 5 * 60_000,
-  };
-  return cachedToken.token;
+  rememberToken(result);
+  return cachedToken!.token;
 }

@@ -6,6 +6,8 @@ MCP (Model Context Protocol) server for reading Outlook / Microsoft 365 mail thr
 
 | Tool                   | Description                                                                         |
 | ---------------------- | ----------------------------------------------------------------------------------- |
+| `authenticate`         | Sign in with a device code shown directly in the chat; reports current account      |
+| `sign_out`             | Remove the cached session from this machine; cancels any pending sign-in            |
 | `list_emails`          | List emails from any folder with OData filters, ordering, and paging (`top`/`skip`) |
 | `search_emails`        | Keyword search across subject, body, sender, and recipients                         |
 | `get_email`            | Full content of one email (plain-text body)                                         |
@@ -48,7 +50,7 @@ Optional: `OUTLOOK_ACCOUNT=you@example.com` pins which cached account to use if 
 
 ### 3. First run
 
-On the first tool call the server prints a device-code prompt to its log/stderr: open the URL, enter the code, sign in. Subsequent runs reuse the cached session.
+Ask your assistant to run the `authenticate` tool (or just ask it to read your mail — any tool that needs auth will tell it to). The chat shows a URL and a one-time code: open the URL, enter the code, sign in. Sessions are cached, so this only happens once per machine.
 
 ## Token cache & security
 
