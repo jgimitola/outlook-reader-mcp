@@ -1,2 +1,55 @@
-{  "name": "outlook-reader",  "version": "1.0.0",  "description": "",  "scripts": {    "mcp": "tsx src/mcp-server.ts",    "build": "tsc",    "format": "prettier --write .",    "format:check": "prettier --check ."  },  "keywords": [],  "author": "",  "license": "ISC",  "type": "commonjs",  "dependencies": {    "@azure/msal-node": "^5.2.3",
-    "@azure/msal-node-extensions": "^5.2.4",    "@microsoft/microsoft-graph-client": "^3.0.7",    "@modelcontextprotocol/sdk": "^1.29.0",    "dotenv": "^17.4.2",    "zod": "^4.4.3"  },  "devDependencies": {    "@microsoft/microsoft-graph-types": "^2.43.1",    "@trivago/prettier-plugin-sort-imports": "^6.0.2",    "@types/node": "^25.9.2",    "prettier": "^3.8.4",    "tsx": "^4.22.4",    "typescript": "^6.0.3"  }}
+{
+  "name": "outlook-reader-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for reading Outlook mail via Microsoft Graph: list, search, and fetch emails (batched), and download attachments.",
+  "bin": {
+    "outlook-reader-mcp": "dist/mcp-server.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "mcp": "tsx src/mcp-server.ts",
+    "build": "tsc",
+    "prepublishOnly": "npm run format:check && npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "outlook",
+    "microsoft-graph",
+    "email"
+  ],
+  "author": "Jesús Imitola",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jgimitola/outlook-reader-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jgimitola/outlook-reader-mcp/issues"
+  },
+  "homepage": "https://github.com/jgimitola/outlook-reader-mcp#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "@azure/msal-node": "^5.2.3",
+    "@azure/msal-node-extensions": "^5.2.4",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "dotenv": "^17.4.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@microsoft/microsoft-graph-types": "^2.43.1",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "@types/node": "^25.9.2",
+    "prettier": "^3.8.4",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}

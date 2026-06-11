@@ -6,7 +6,8 @@
       "cwd": "C:\\Users\\jesus\\Documents\\Proyectos\\outlook-reader",
       "env": {
         "CLIENT_ID": "your-azure-app-client-id",
-        "TENANT_ID": "consumers"
+        "TENANT_ID": "consumers",
+        "OUTLOOK_ACCOUNT": "optional-account-to-pin@example.com"
       }
     }
   }
