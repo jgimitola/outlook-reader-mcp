@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "outlook-reader": {
+      "command": "npx",
+      "args": ["tsx", "src/mcp-server.ts"],
+      "cwd": "C:\\Users\\jesus\\Documents\\Proyectos\\outlook-reader",
+      "env": {
+        "CLIENT_ID": "your-azure-app-client-id",
+        "TENANT_ID": "consumers"
+      }
+    }
+  }
+}

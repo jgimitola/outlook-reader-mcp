@@ -1,0 +1,13 @@
+# Dependencies
+node_modules
+
+# Build artifacts
+dist
+*.tsbuildinfo
+
+# Environment & secrets
+.env*
+token_cache.json
+
+# Misc
+.claude

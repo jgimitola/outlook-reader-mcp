@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+*.tsbuildinfo
+
+# Environment & secrets — token_cache.json holds MSAL refresh/access tokens
+.env
+.env.*
+token_cache.json
+
+# Logs
+npm-debug.log*
+
+# Misc
+.DS_Store
+.claude/
