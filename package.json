@@ -2,6 +2,9 @@
   "name": "outlook-reader-mcp",
   "version": "1.0.0",
   "description": "MCP server for reading Outlook mail via Microsoft Graph: list, search, and fetch emails (batched), and download attachments.",
+  "main": "dist/mcp-server.js",
+  "types": "dist/mcp-server.d.ts",
+  "sideEffects": false,
   "bin": {
     "outlook-reader-mcp": "dist/mcp-server.js"
   },
@@ -12,6 +15,7 @@
     "mcp": "tsx src/mcp-server.ts",
     "build": "tsc",
     "prepublishOnly": "npm run format:check && npm run build",
+    "postversion": "git push --follow-tags",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
