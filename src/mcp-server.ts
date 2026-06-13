@@ -6,6 +6,10 @@ import 'dotenv/config';
 import { getConfig } from './auth.js';
 import { registerAllTools } from './tools/index.js';
 
+// Pull version from package.json so it stays in sync with published releases.
+// Resolves to the project root from both dist/ (build) and src/ (tsx dev).
+const { version } = require('../package.json') as { version: string };
+
 async function main() {
   // Fail fast with a readable message instead of a confusing MSAL error on
   // the first tool call.
@@ -13,7 +17,7 @@ async function main() {
 
   const server = new McpServer({
     name: 'outlook-reader',
-    version: '1.0.0',
+    version,
   });
   registerAllTools(server);
 
